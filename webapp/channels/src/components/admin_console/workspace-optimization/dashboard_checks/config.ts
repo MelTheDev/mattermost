@@ -9,6 +9,8 @@ import {ConsolePages, DocLinks} from 'utils/constants';
 import {ItemModel, ItemStatus, Options} from '../dashboard.type';
 import {impactModifiers} from '../dashboard.data';
 
+import {Client4} from 'mattermost-redux/client';
+
 /**
  *
  * @description This checks to see if the user's active session is done over https. This does not check if the server is configured to use https.
@@ -70,6 +72,40 @@ const sessionLength = (
     };
 };
 
+const fileStorage = async (
+    config: Partial<AdminConfig>,
+    formatMessage: ReturnType<typeof useIntl>['formatMessage'],
+    options: Options,
+) => {
+    const testFileStorage = async () => {
+        const pingResponse = await Client4.ping(true);
+
+        return pingResponse.FileStoreSatus === 'OK' ? ItemStatus.OK : ItemStatus.ERROR;
+    };
+
+    const status = await testFileStorage();
+
+    return {
+        id: 'file_storage,',
+        title: formatMessage({
+            id: 'admin.reporting.workspace_optimization.configuration.file_storage.title',
+            defaultMessage: 'File storage access is faulty.',
+        }),
+        description: formatMessage({
+            id: 'admin.reporting.workspace_optimization.configuration.file_storage.description',
+            defaultMessage: 'Check your file storage settings to ensure your Mattermost workspace has access to the configured file storage.',
+        }),
+        configUrl: ConsolePages.FILE_STORAGE,
+        configText: formatMessage({id: 'admin.reporting.workspace_optimization.configuration.file_storage.cta', defaultMessage: 'Config file storage'}),
+        infoUrl: DocLinks.FILE_STORAGE,
+        infoText: formatMessage({id: 'admin.reporting.workspace_optimization.cta.learnMore', defaultMessage: 'Learn more'}),
+        telemetryAction: 'file_storage',
+        status,
+        scoreImpact: 50,
+        impactModifier: impactModifiers[status],
+    };
+};
+
 export const runConfigChecks = async (
     config: Partial<AdminConfig>,
     formatMessage: ReturnType<typeof useIntl>['formatMessage'],
@@ -78,6 +114,7 @@ export const runConfigChecks = async (
     const checks = [
         ssl,
         sessionLength,
+        fileStorage,
     ];
     const results = await Promise.all(checks.map((check) => check(config, formatMessage, options)));
     return results;
